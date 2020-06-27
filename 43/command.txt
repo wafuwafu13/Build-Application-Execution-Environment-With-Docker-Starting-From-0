@@ -1,0 +1,75 @@
+# Consul用の仮想マシンを作成
+docker-machine create mh-keystore
+
+# 操作対象を、作成したマルチホストキーストアに変更
+eval $(docker-machine env mh-keystore)
+
+# 存在するDocker Machineのリストを表示
+docker-machine ls
+
+# mh-keystoreの仮想マシン上でConsulのコンテナを起動します
+docker run -d --name consul -p 8500:8500 -h consul consul agent -server -bootstrap -client 0.0.0.0
+
+# Swarmマネージャーの仮想マシンを作成
+docker-machine create --swarm --swarm-master \
+    --swarm-discovery="consul://$(docker-machine ip mh-keystore):8500" \
+    --engine-opt="cluster-store=consul://$(docker-machine ip mh-keystore):8500" \
+    --engine-opt="cluster-advertise=eth1:2376" \
+    mhs-demo0
+
+# エージェントノードの仮想マシンを作成
+docker-machine create --swarm \
+    --swarm-discovery="consul://$(docker-machine ip mh-keystore):8500" \
+    --engine-opt="cluster-store=consul://$(docker-machine ip mh-keystore):8500" \
+    --engine-opt="cluster-advertise=eth1:2376" \
+    mhs-demo1
+
+# 存在するDocker Machineのリストを表示
+docker-machine ls
+
+# 操作対象をマネージャーノードのマシンに切り替え
+eval $(docker-machine env --swarm mhs-demo0)
+
+# 存在するDocker Machineのリストを表示
+docker-machine ls
+
+# Swarmの情報を確認
+docker info
+
+# overlayネットワークの作成
+docker network create --driver overlay --subnet=10.0.9.0/24 mh-net
+
+# 存在するネットワークのリストを表示
+docker network ls
+
+# 各ノードのネットワーク確認
+docker-machine ssh mhs-demo0
+docker network ls
+
+exit
+
+docker-machine ssh mhs-demo1
+docker network ls
+
+exit
+
+# マスターノードでnginxのコンテナを起動
+docker-machine ssh mhs-demo0
+
+docker run -itd \
+  --name web \
+  --network mh-net \
+  --env "constraint:node==mhs-demo0" \
+  nginx
+
+
+# コンテナの起動を確認
+docker ps
+
+# エージェントノードでbusyboxコンテナを起動して、オーバーレイネットワークを通じてマスターノードのコンテンツを取得できることを確認
+exit
+docker-machine ssh mhs-demo1
+docker run -it --rm \
+  --network mh-net \
+  --env "constraint:node==mhs-demo1" \
+  busybox wget -O- http://web

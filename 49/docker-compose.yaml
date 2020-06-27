@@ -1,0 +1,18 @@
+version: '3'
+services:
+  db: 
+    image: postgres
+  web:
+    # Dockerfileからイメージをビルドして使用する
+    build: .
+    # コンテナ起動時に実行されるコマンド(引数にコマンドがなかった場合) リッスンポートは8000番
+    command: python3 manage.py runserver 0.0.0.0:8000
+    # バインドマウントでdocker-compose.yamlと同じディレクトリをコンテナの/codeディレクトリにマウント
+    volumes:
+      - .:/code
+    # 8000番で公開してコンテナを8000(リッスンポートと同じ)に転送されるようにしている
+    ports:
+      - "8000:8000"
+    # webサービスが起動する前にdbサービスが起動するように依存関係を設定
+    depends_on: 
+      - db

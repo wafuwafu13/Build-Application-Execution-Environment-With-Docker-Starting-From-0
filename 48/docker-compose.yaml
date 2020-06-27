@@ -1,0 +1,27 @@
+# docker-composeのファイル形式のバージョン
+version: '3'
+services:
+    # サービス名(任意) 1つのサービスで1つのコンテナが起動
+    web:
+      # docker-compose.yamlと同じディレクトリをビルドコンテキストとする
+      build: .
+      # コンテナ外部に公開するポートとマッピング先のポートを示す
+      ports: 
+      - "5000:5000"
+      volumes:
+      # バインドマウントでdocker-compose.yamlと同じディレクトリをコンテナの/codeディレクトリにマウント
+      - .:/code
+      # volumesに定義したvolumeをweb serviceのコンテナの/var/logにマウント
+      - logvolume01:/var/log
+      # web service から redis service へのリンクを設定
+      links:
+      - redis
+    # サービス名(任意) 1つのサービスで1つのコンテナが起動
+    redis:
+        # redis imageを使用してコンテナを立ち上げる
+        image: redis
+
+
+volumes:
+  # デフォルトのvolumeを使用する場合は設定は不要({}は無くても良い)
+  logvolume01: {}

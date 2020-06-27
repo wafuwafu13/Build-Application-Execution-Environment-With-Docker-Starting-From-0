@@ -1,0 +1,35 @@
+# このファイルの記述形式のバージョン
+version: '3.4'
+
+services: 
+  wordpress:
+    image: wordpress
+    # 8080番で公開し、コンテナの80番ポートに転送
+    ports: 
+      - 8080:80
+    environment:
+      # mysqlコンテナのパスワードと合わせる
+      WORDPRESS_DB_PASSWORD: samplewp
+    deploy:
+      replicas: 2
+      placement:
+        # worker node のみにタスクを割り当てる
+        constraints:
+          - node.role == worker
+    depends_on: 
+      - mysql
+  
+  mysql:
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: samplewp
+    volumes:
+      - mysql_vol:/var/lib/mysql
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.hostname == manager1
+
+volumes:
+  mysql_vol:
